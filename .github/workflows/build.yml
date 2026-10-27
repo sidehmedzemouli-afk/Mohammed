@@ -24,6 +24,9 @@ jobs:
           flutter-version: '3.22.0'
           channel: 'stable'
 
+      - name: Create Flutter Project files
+        run: flutter create . --project-name ostra_app
+
       - name: Install dependencies
         run: flutter pub get
 
