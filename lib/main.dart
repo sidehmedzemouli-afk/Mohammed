@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
   runApp(const MyApp());
 }
 
@@ -30,13 +34,15 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _controller = TextEditingController();
-  final List<String> _messages = [];
+  final CollectionReference _messagesRef = FirebaseFirestore.instance.collection('messages');
 
-  void _sendMessage() {
+  void _sendMessage() async {
     if (_controller.text.isNotEmpty) {
-      setState(() {
-        _messages.add(_controller.text);
-        _controller.clear();
+      String text = _controller.text;
+      _controller.clear();
+      await _messagesRef.add({
+        'text': text,
+        'timestamp': FieldValue.serverTimestamp(),
       });
     }
   }
@@ -52,21 +58,36 @@ class _ChatScreenState extends State<ChatScreen> {
       body: Column(
         children: [
           Expanded(
-            child: ListView.builder(
-              itemCount: _messages.length,
-              itemBuilder: (context, index) {
-                return ListTile(
-                  title: Align(
-                    alignment: Alignment.centerRight,
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.deepPurple.shade100,
-                        borderRadius: BorderRadius.circular(15),
+            child: StreamBuilder<QuerySnapshot>(
+              stream: _messagesRef.orderBy('timestamp', descending: true).snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return const Center(child: Text('حدث خطأ في الاتصال'));
+                }
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                final messages = snapshot.data!.docs;
+                return ListView.builder(
+                  reverse: true,
+                  itemCount: messages.length,
+                  itemBuilder: (context, index) {
+                    var messageData = messages[index].data() as Map<String, dynamic>;
+                    return ListTile(
+                      title: Align(
+                        alignment: Alignment.centerRight,
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.deepPurple.shade100,
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                          child: Text(messageData['text'] ?? '', style: const TextStyle(fontSize: 16)),
+                        ),
                       ),
-                      child: Text(_messages[index], style: const TextStyle(fontSize: 16)),
-                    ),
-                  ),
+                    );
+                  },
                 );
               },
             ),
