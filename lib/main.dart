@@ -4,7 +4,12 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+  try {
+    await Firebase.initializeApp();
+  } catch (e) {
+    runApp(MaterialApp(home: Scaffold(body: Center(child: Text('خطأ في الاتصال: $e', style: TextStyle(color: Colors.red))))));
+    return;
+  }
   runApp(const MyApp());
 }
 
@@ -40,10 +45,14 @@ class _ChatScreenState extends State<ChatScreen> {
     if (_controller.text.isNotEmpty) {
       String text = _controller.text;
       _controller.clear();
-      await _messagesRef.add({
-        'text': text,
-        'timestamp': FieldValue.serverTimestamp(),
-      });
+      try {
+        await _messagesRef.add({
+          'text': text,
+          'timestamp': DateTime.now(), 
+        });
+      } catch (e) {
+        print("خطأ في الإرسال: $e");
+      }
     }
   }
 
@@ -59,10 +68,10 @@ class _ChatScreenState extends State<ChatScreen> {
         children: [
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
-              stream: _messagesRef.orderBy('timestamp', descending: true).snapshots(),
+              stream: _messagesRef.snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
-                  return const Center(child: Text('حدث خطأ في الاتصال'));
+                  return Center(child: Text('خطأ: ${snapshot.error}'));
                 }
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
@@ -70,7 +79,6 @@ class _ChatScreenState extends State<ChatScreen> {
 
                 final messages = snapshot.data!.docs;
                 return ListView.builder(
-                  reverse: true,
                   itemCount: messages.length,
                   itemBuilder: (context, index) {
                     var messageData = messages[index].data() as Map<String, dynamic>;
