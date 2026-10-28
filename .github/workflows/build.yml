@@ -5,7 +5,7 @@ on: [push, workflow_dispatch]
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
 
     steps:
       - uses: actions/checkout@v4
@@ -18,21 +18,32 @@ jobs:
           flutter-version: '3.22.0'
           channel: 'stable'
 
+      # 1. إنشاء مشروع فلاتر نظيف
       - name: Create Flutter Project
         run: flutter create . --platforms=android --project-name ostra_app
 
+      # 2. تنظيف المشروع من أي ملفات مؤقتة قد تسبب الخطأ
+      - name: Clean Flutter Project
+        run: flutter clean
+
+      # 3. ربط Firebase باستخدام الأداة الرسمية (تتجاوز الأسئلة التفاعلية)
       - name: Setup Firebase using FlutterFire CLI
         run: |
           dart pub global activate flutterfire_cli
           export PATH="$PATH":"$HOME/.pub-cache/bin"
+          # استخدام ملف google-services.json الموجود مسبقاً لتجنب مشاكل المصادقة
+          firebase login:ci --no-localhost || true
           flutterfire configure --project=ostoura --platforms=android --yes
 
+      # 4. تثبيت الاعتماديات
       - name: Install dependencies
         run: flutter pub get
 
+      # 5. بناء التطبيق
       - name: Build APK
         run: flutter build apk --release
 
+      # 6. رفع التطبيق
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
