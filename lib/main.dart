@@ -4,7 +4,20 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+  try {
+    await Firebase.initializeApp(
+      options: const FirebaseOptions(
+        apiKey: 'AIzaSyCaD-4t252I9WFQv474NJQBmSLwX18hp34',
+        appId: '1:1043770801975:android:546b01727cba362ec3a4b2',
+        messagingSenderId: '1043770801975',
+        projectId: 'ostoura-b80bc',
+        storageBucket: 'ostoura-b80bc.firebasestorage.app',
+      ),
+    );
+  } catch (e) {
+    runApp(MaterialApp(home: Scaffold(body: Center(child: Text('خطأ: $e', style: TextStyle(color: Colors.red))))));
+    return;
+  }
   runApp(const MyApp());
 }
 
@@ -40,10 +53,14 @@ class _ChatScreenState extends State<ChatScreen> {
     if (_controller.text.isNotEmpty) {
       String text = _controller.text;
       _controller.clear();
-      await _messagesRef.add({
-        'text': text,
-        'timestamp': DateTime.now(),
-      });
+      try {
+        await _messagesRef.add({
+          'text': text,
+          'timestamp': DateTime.now(), 
+        });
+      } catch (e) {
+        print("خطأ: $e");
+      }
     }
   }
 
@@ -61,8 +78,12 @@ class _ChatScreenState extends State<ChatScreen> {
             child: StreamBuilder<QuerySnapshot>(
               stream: _messagesRef.snapshots(),
               builder: (context, snapshot) {
-                if (snapshot.hasError) return Center(child: Text('خطأ: ${snapshot.error}'));
-                if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+                if (snapshot.hasError) {
+                  return Center(child: Text('خطأ: ${snapshot.error}'));
+                }
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
                 final messages = snapshot.data!.docs;
                 return ListView.builder(
