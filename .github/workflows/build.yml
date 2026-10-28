@@ -21,21 +21,35 @@ jobs:
       - name: Create Flutter Project
         run: flutter create . --platforms=android --project-name ostra_app
 
-      - name: Manual Firebase Integration & Permissions
+      - name: Fix Android Permissions & Firebase
         run: |
           cp google-services.json android/app/
+          python3 -c "
+          import os
           
-          # إضافة إذن الإنترنت (حل مشكلة عدم فتح التطبيق)
-          sed -i '/<application/i \    <uses-permission android:name="android.permission.INTERNET" />' android/app/src/main/AndroidManifest.xml
+          # 1. Add Internet Permission
+          manifest = 'android/app/src/main/AndroidManifest.xml'
+          if os.path.exists(manifest):
+              with open(manifest, 'r') as f: c = f.read()
+              if 'android.permission.INTERNET' not in c:
+                  c = c.replace('<application', '    <uses-permission android:name=\"android.permission.INTERNET\" />\n    <application')
+                  with open(manifest, 'w') as f: f.write(c)
           
-          # إضافة إعدادات فايربيس
-          if [ -f android/settings.gradle.kts ]; then
-            sed -i 's/plugins {/plugins {\n    id("com.google.gms.google-services") version "4.4.1" apply false/' android/settings.gradle.kts
-            sed -i 's/plugins {/plugins {\n    id("com.google.gms.google-services")/' android/app/build.gradle.kts
-          elif [ -f android/settings.gradle ]; then
-            sed -i 's/plugins {/plugins {\n    id("com.google.gms.google-services") version "4.4.1" apply false/' android/settings.gradle
-            sed -i 's/plugins {/plugins {\n    id("com.google.gms.google-services")/' android/app/build.gradle
-          fi
+          # 2. Add Google Services Plugin
+          for path in ['android/settings.gradle.kts', 'android/settings.gradle']:
+              if os.path.exists(path):
+                  with open(path, 'r') as f: c = f.read()
+                  if 'com.google.gms.google-services' not in c:
+                      c = c.replace('plugins {', 'plugins {\n    id(\"com.google.gms.google-services\") version \"4.4.1\" apply false')
+                      with open(path, 'w') as f: f.write(c)
+                      
+          for path in ['android/app/build.gradle.kts', 'android/app/build.gradle']:
+              if os.path.exists(path):
+                  with open(path, 'r') as f: c = f.read()
+                  if 'com.google.gms.google-services' not in c:
+                      c = c.replace('plugins {', 'plugins {\n    id(\"com.google.gms.google-services\")')
+                      with open(path, 'w') as f: f.write(c)
+          "
 
       - name: Install dependencies
         run: flutter pub get
