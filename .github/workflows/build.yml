@@ -5,7 +5,7 @@ on: [push, workflow_dispatch]
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
 
     steps:
       - uses: actions/checkout@v4
@@ -21,13 +21,13 @@ jobs:
       - name: Create Flutter Project
         run: flutter create . --platforms=android --project-name ostra_app
 
-      - name: Auto-Configure Firebase & Permissions
+      - name: Inject Firebase Config & Permissions
         run: |
           cp google-services.json android/app/
           python3 -c "
           import os
           
-          # إضافة إذن الإنترنت
+          # 1. إذن الإنترنت
           manifest = 'android/app/src/main/AndroidManifest.xml'
           if os.path.exists(manifest):
               with open(manifest, 'r') as f: c = f.read()
@@ -35,7 +35,7 @@ jobs:
                   c = c.replace('<application', '<uses-permission android:name=\"android.permission.INTERNET\"/>\n    <application')
                   with open(manifest, 'w') as f: f.write(c)
 
-          # ربط فايربيس في ملفات الإعدادات
+          # 2. ربط Firebase في الإعدادات
           for path in ['android/settings.gradle.kts', 'android/settings.gradle']:
               if os.path.exists(path):
                   with open(path, 'r') as f: c = f.read()
@@ -43,6 +43,7 @@ jobs:
                       c = c.replace('plugins {', 'plugins {\n    id(\"com.google.gms.google-services\") version \"4.4.1\" apply false')
                       with open(path, 'w') as f: f.write(c)
 
+          # 3. تشغيل Firebase في التطبيق
           for path in ['android/app/build.gradle.kts', 'android/app/build.gradle']:
               if os.path.exists(path):
                   with open(path, 'r') as f: c = f.read()
